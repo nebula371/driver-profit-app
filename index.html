@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driver Profit Tracker</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:#f8fafc;font-family:Arial,sans-serif}
+header{padding:24px 18px;background:#172338}
+h1{font-size:25px;margin:0 0 7px}
+p{color:#aebed0}
+main{max-width:720px;margin:auto;padding:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:#1d2a40;border:1px solid #35445a;border-radius:14px;padding:16px;margin-bottom:14px}
+.label{color:#b6c5d7;font-size:13px}
+.value{font-size:25px;font-weight:bold;margin-top:8px}
+.green{color:#4ade80}
+input,select,button{width:100%;padding:13px;margin:7px 0 13px;border-radius:9px;font-size:16px}
+input,select{background:#101827;border:1px solid #53637b;color:white}
+button{background:#38bdf8;color:#082033;border:0;font-weight:bold;cursor:pointer}
+.secondary{background:#334155;color:white}
+.danger{background:#7f1d1d;color:white}
+.entry{border-top:1px solid #35445a;padding:12px 0}
+small{color:#aebed0}
+</style>
+</head>
+<body>
+<header>
+<h1>🚗 Driver Profit Tracker</h1>
+<p>Know what you really earn.</p>
+</header>
+<main>
+<div class="grid">
+<div class="card"><div class="label">Gross Earnings</div><div class="value" id="gross">$0.00</div></div>
+<div class="card"><div class="label">Estimated Profit</div><div class="value green" id="profit">$0.00</div></div>
+<div class="card"><div class="label">Miles Driven</div><div class="value" id="miles">0</div></div>
+<div class="card"><div class="label">Expenses</div><div class="value" id="expenses">$0.00</div></div>
+</div>
+<div class="card">
+<h2>Add Delivery</h2>
+<label>Platform</label>
+<select id="platform">
+<option>Walmart Spark</option>
+<option>Uber Eats</option>
+<option>DoorDash</option>
+<option>Other</option>
+</select>
+<label>Delivery earnings ($)</label>
+<input id="earnings" type="number" min="0" step=".01" placeholder="35.00">
+<label>Miles driven</label>
+<input id="distance" type="number" min="0" step=".1" placeholder="12.5">
+<label>Expenses ($)</label>
+<input id="cost" type="number" min="0" step=".01" placeholder="0.00">
+<button onclick="addDelivery()">Save Delivery</button>
+</div>
+<div class="card">
+<h2>Delivery History</h2>
+<div id="history"></div>
+</div>
+<div class="card">
+<h2>Pro Features</h2>
+<p>Coming later: detailed reports, tax estimates, mileage summaries and more.</p>
+<button class="secondary" disabled>Pro — $9.99/month (Coming Soon)</button>
+</div>
+</main>
+<script>
+const KEY="driverProfitEntriesV1";
+let entries=[];
+try {
+ const saved=JSON.parse(localStorage.getItem(KEY)||"[]");
+ entries=Array.isArray(saved)?saved:[];
+} catch(e) {entries=[];}
+const money=n=>"$"+n.toFixed(2);
+function addDelivery(){
+ const earnings=Number(document.getElementById("earnings").value);
+ const miles=Number(document.getElementById("distance").value);
+ const cost=Number(document.getElementById("cost").value||0);
+ if(!document.getElementById("earnings").value||
+    !document.getElementById("distance").value||
+    ![earnings,miles,cost].every(Number.isFinite)||
+    earnings<0||miles<0||cost<0){
+   alert("Enter valid earnings, miles and expenses.");
+   return;
+ }
+ entries.unshift({
+   id:Date.now()+"-"+Math.random(),
+   date:new Date().toLocaleDateString(),
+   platform:document.getElementById("platform").value,
+   earnings,miles,cost
+ });
+ save();
+ document.getElementById("earnings").value="";
+ document.getElementById("distance").value="";
+ document.getElementById("cost").value="";
+}
+function removeDelivery(id){
+ if(!confirm("Delete this delivery?"))return;
+ entries=entries.filter(e=>e.id!==id);
+ save();
+}
+function save(){
+ try{localStorage.setItem(KEY,JSON.stringify(entries));}
+ catch(e){alert("Could not save. Check browser storage.");return;}
+ render();
+}
+function render(){
+ const sum=k=>entries.reduce((t,e)=>t+Number(e[k]||0),0);
+ const gross=sum("earnings"),cost=sum("cost");
+ document.getElementById("gross").textContent=money(gross);
+ document.getElementById("profit").textContent=money(gross-cost);
+ document.getElementById("miles").textContent=sum("miles").toFixed(1);
+ document.getElementById("expenses").textContent=money(cost);
+ const history=document.getElementById("history");
+ history.replaceChildren();
+ if(!entries.length){
+   history.textContent="No deliveries yet.";
+   return;
+ }
+ entries.forEach(e=>{
+   const div=document.createElement("div");
+   div.className="entry";
+   const title=document.createElement("strong");
+   title.textContent=e.platform+" — "+money(Number(e.earnings));
+   const details=document.createElement("p");
+   details.textContent=e.date+" • "+e.miles+" miles • "+money(Number(e.cost))+" expenses";
+   const btn=document.createElement("button");
+   btn.className="danger";
+   btn.textContent="Delete";
+   btn.onclick=()=>removeDelivery(e.id);
+   div.append(title,details,btn);
+   history.append(div);
+ });
+}
+render();
+</script>
+</body>
+</html>
